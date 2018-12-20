@@ -34,6 +34,9 @@ on early-init
 
 on init
     sysclktz 0
+    
+loglevel 0
+    write /proc/bootprof "INIT: on init start"
 
     # Mix device-specific information into the entropy pool
     copy /proc/cmdline /dev/urandom
@@ -47,9 +50,27 @@ on init
     symlink /system/vendor /vendor
 
     # Mount cgroup mount point for cpu accounting
+    mkdir /acct
     mount cgroup none /acct cpuacct
     mkdir /acct/uid
 
+    # Create cgroup mount point for memory
+    mount tmpfs none /sys/fs/cgroup mode=0750,uid=0,gid=1000
+    mkdir /sys/fs/cgroup/memory 0750 root system
+    mount cgroup none /sys/fs/cgroup/memory memory
+    write /sys/fs/cgroup/memory/memory.move_charge_at_immigrate 1
+    chown root system /sys/fs/cgroup/memory/tasks
+    chmod 0660 /sys/fs/cgroup/memory/tasks
+    mkdir /sys/fs/cgroup/memory/sw 0750 root system
+    write /sys/fs/cgroup/memory/sw/memory.swappiness 100
+    write /sys/fs/cgroup/memory/sw/memory.move_charge_at_immigrate 1
+    chown root system /sys/fs/cgroup/memory/sw/tasks
+    chmod 0660 /sys/fs/cgroup/memory/sw/tasks
+    
+    mkdir /system
+    mkdir /data 0771 system system
+    mkdir /cache 0770 system cache
+    
     # Create energy-aware scheduler tuning nodes
     mkdir /dev/stune
     mount cgroup none /dev/stune schedtune
@@ -129,7 +150,7 @@ on init
     write /proc/sys/kernel/kptr_restrict 2
     write /proc/sys/vm/mmap_min_addr 32768
     write /proc/sys/net/ipv4/ping_group_range "0 2147483647"
-    write /proc/sys/net/unix/max_dgram_qlen 600
+    write /proc/sys/net/unix/max_dgram_qlen 300
     write /proc/sys/kernel/sched_rt_runtime_us 950000
     write /proc/sys/kernel/sched_rt_period_us 1000000
 
@@ -153,6 +174,7 @@ on init
     chown system system /dev/cpuctl
     chown system system /dev/cpuctl/tasks
     chmod 0666 /dev/cpuctl/tasks
+    write /dev/cpuctl/cpu.shares 1024
     write /dev/cpuctl/cpu.rt_period_us 1000000
     write /dev/cpuctl/cpu.rt_runtime_us 950000
 
@@ -673,10 +695,10 @@ on property:ro.debuggable=1
     chmod 0773 /data/misc/trace
     start console
 
-service flash_recovery /system/bin/install-recovery.sh
-    class main
-    oneshot
-    disabled
+###service flash_recovery /system/bin/install-recovery.sh
+    ###class main
+    ###oneshot
+    ###disabled
 
 # update recovery if enabled
 #on property:persist.sys.recovery_update=true
