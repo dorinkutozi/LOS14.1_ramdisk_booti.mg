@@ -18,6 +18,12 @@ on early-init
     # Set init and its forked children's oom_adj.
     write /proc/1/oom_score_adj -1000
 
+    # Apply strict SELinux checking of PROT_EXEC on mmap/mprotect calls.
+    write /sys/fs/selinux/checkreqprot 0
+
+    # Set the security context for the init process. This should occur before anything else (e.g. ueventd) is started.
+    setcon u:r:init:s0
+    
     # Disable sysrq from keyboard
     write /proc/sys/kernel/sysrq 0
 
@@ -133,7 +139,7 @@ loglevel 0
     # app mem cgroups, used by activity manager, lmkd and zygote
     mkdir /dev/memcg/apps/ 0755 system system
 
-    write /proc/sys/kernel/panic_on_oops 1
+    write /proc/sys/kernel/panic_on_oops 0
     write /proc/sys/kernel/hung_task_timeout_secs 0
     write /proc/cpu/alignment 4
 
