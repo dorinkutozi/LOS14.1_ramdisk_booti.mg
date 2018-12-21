@@ -23,7 +23,27 @@ on init
 
     #Charging Battery
     chown radio radio /sys/devices/platform/battery/Charging_CallState
+    
+    # mount different fs start
+    on charger-fs
+    mount_all /fstab.charger
+    exec /system/bin/tune2fs -O has_journal -u 10010 -r 4096 /dev/block/platform/mtk-msdc.0/by-name/userdata
 
+    on charger
+    mount ext4 /dev/block/platform/mtk-msdc.0/by-name/system /system ro wait
+    start fuelgauged
+    start servicemanager
+    
+      # disable USB
+    write /sys/class/udc/musb-hdrc/device/cmode 0
+
+    # md32 boot
+    chown root system /dev/md32
+    chmod 0440 /dev/md32
+    chown root system /sys/class/misc/md32/md32_mobile_log
+    chmod 0660 /sys/class/misc/md32/md32_mobile_log
+    write /sys/class/misc/md32/md32_boot 1
+    
     # BATTERY proc
     chown radio system /proc/mtk_battery_cmd/current_cmd
     chown radio system /proc/mtk_battery_cmd/discharging_cmd
@@ -53,6 +73,7 @@ on init
 
 on fs
     mount_all /fstab.mt6795
+    exec /system/bin/tune2fs -O has_journal -u 10010 -r 4096 /dev/block/platform/mtk-msdc.0/by-name/userdata
 
 on post-fs
     # Internal storage
@@ -562,6 +583,7 @@ service thermal_manager /system/bin/thermal_manager /system/etc/.tp/thermal.conf
     class main
     user root
     oneshot
+    disable
 
 # Charging
 service charger /charger
@@ -617,4 +639,10 @@ on property:vold.decrypt=trigger_shutdown_framework
     start stop_modem
 
 on property:ril.muxreport=1
-    start muxreport-daemon
+    start muxreport-daemon    
+
+# GuiExt Server init
+service guiext-server /system/bin/guiext-server
+    class main
+    user system
+    group system graphics
